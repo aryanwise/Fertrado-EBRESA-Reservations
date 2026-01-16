@@ -1,122 +1,138 @@
 const SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbzSvRQeLnH69MssLEpTPbK-CAa-IzmGNv6K-Mp7NNIcl5SxvsirEHWmFUhiNlGMKtEM/exec";
+  "https://script.google.com/macros/s/AKfycbzbXTzTo3aMpO8bDrRoGaX72_wlThVmiAL-S-lkAJRL_5sutC6DkERu63rs3SfZVB0P/exec";
 
-async function sendData(payload) {
-  try {
-    const response = await fetch(SCRIPT_URL, {
-      method: "POST",
-      // This header is the secret to bypassing CORS errors with Google Apps Script
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8",
-      },
-      body: JSON.stringify(payload),
-      // Forces the browser to handle redirects which Google uses
-      redirect: "follow",
-    });
-
-    const result = await response.json();
-    return result;
-  } catch (error) {
-    console.error("Fetch Error:", error);
-    return { result: "error", message: "Network error or CORS block." };
-  }
-}
-// 1. Availability Check
+// --- 1. AVAILABILITY CHECK LOGIC ---
 document
   .getElementById("checkBtn")
   .addEventListener("click", async function () {
     const dateVal = document.getElementById("date").value;
-    if (!dateVal) return alert("Select date");
-
-    const data = await sendData({ action: "check", date: dateVal });
     const status = document.getElementById("availabilityStatus");
 
-    if (data.result === "info") {
-      status.innerText = data.remaining + " slots left.";
-    } else {
-      alert("Error: " + JSON.stringify(data));
+    if (!dateVal) {
+      status.innerText = "Please select a date first / Pasirinkite datą.";
+      status.style.color = "orange";
+      return;
+    }
+
+    status.innerText = "Checking availability... / Tikrinama...";
+    status.style.color = "#3498db";
+
+    try {
+      // We use text/plain to avoid CORS pre-flight blocks
+      const response = await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action: "check", date: dateVal }),
+      });
+
+      const data = await response.json();
+
+      if (data.remaining <= 0) {
+        status.innerText = "FULLY BOOKED (0 slots left) / UŽPILTYTA";
+        status.style.color = "#e74c3c";
+      } else {
+        status.innerText = `${data.remaining} slots remaining / likusios vietos.`;
+        status.style.color = "#27ae60";
+      }
+    } catch (error) {
+      console.error("Check error:", error);
+      status.innerText = "Error checking slots. Please try again.";
+      status.style.color = "red";
     }
   });
 
-// 2. Form Submission
-document.getElementById("bookingForm").addEventListener("submit", function (e) {
-  e.preventDefault();
-  const btn = document.getElementById("submitBtn");
-  const msg = document.getElementById("message");
+// --- 2. FORM SUBMISSION LOGIC ---
+document
+  .getElementById("bookingForm")
+  .addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const btn = document.getElementById("submitBtn");
+    const msg = document.getElementById("message");
 
-  btn.disabled = true;
-  btn.innerText = "Validating...";
+    btn.disabled = true;
+    btn.innerText = "Processing... / Apdorojama...";
 
-  const formData = {
-    date: document.getElementById("date").value,
-    time: document.getElementById("time").value,
-    company: document.getElementById("company").value,
-    contractNum: document.getElementById("contractNum").value,
-    product: document.getElementById("product").value,
-    package: document.getElementById("package").value,
-    carrier: document.getElementById("carrier").value,
-    transportNum: document.getElementById("transportNum").value,
-    trailerNum: document.getElementById("trailerNum").value,
-    cmrNum: document.getElementById("cmrNum").value,
-    receiver: document.getElementById("receiver").value,
-    driverName: document.getElementById("driverName").value,
-    driverPhone: document.getElementById("driverPhone").value,
-  };
+    // Collect all 13 fields
+    const formData = {
+      date: document.getElementById("date").value,
+      time: document.getElementById("time").value,
+      company: document.getElementById("company").value,
+      contractNum: document.getElementById("contractNum").value,
+      product: document.getElementById("product").value,
+      package: document.getElementById("package").value,
+      carrier: document.getElementById("carrier").value,
+      transportNum: document.getElementById("transportNum").value,
+      trailerNum: document.getElementById("trailerNum").value,
+      cmrNum: document.getElementById("cmrNum").value,
+      receiver: document.getElementById("receiver").value,
+      driverName: document.getElementById("driverName").value,
+      driverPhone: document.getElementById("driverPhone").value,
+    };
 
-  fetch(SCRIPT_URL, {
-    method: "POST",
-    mode: "no-cors", // This is a common fix for Google Apps Script errors
-    cache: "no-cache",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(formData),
-  })
-    .then((res) => res.json())
-    .then((data) => {
+    try {
+      const response = await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
       if (data.result === "success") {
         msg.style.color = "#27ae60";
-        msg.innerText = "Success! Downloading your receipt...";
+        msg.innerText =
+          "SUCCESS! Downloading receipt. / SĖKMINGA! Atsiunčiamas kvitas.";
         generatePDF(formData);
         document.getElementById("bookingForm").reset();
         document.getElementById("availabilityStatus").innerText = "";
       } else if (data.result === "full") {
         msg.style.color = "#e74c3c";
-        msg.innerText = "Date just became full. Please pick another day.";
+        msg.innerText = "Date is full (40/40). / Data užpildyta.";
+      } else {
+        throw new Error(data.error || "Unknown error");
       }
+    } catch (error) {
+      console.error("Submit error:", error);
+      msg.style.color = "#e74c3c";
+      msg.innerText = "Connection error. Please check your internet.";
+    } finally {
       btn.disabled = false;
       btn.innerText = "Submit & Download Receipt";
-    })
-    .catch(() => {
-      msg.innerText = "Critical error. Please try again.";
-      btn.disabled = false;
-      btn.innerText = "Submit & Download Receipt";
-    });
-});
+    }
+  });
 
-// 3. PDF Generator
+// --- 3. PDF RECEIPT GENERATOR ---
 function generatePDF(data) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
+  // Title
   doc.setFontSize(18);
   doc.setTextColor(39, 174, 96);
-  doc.text("LOADING AUTHORIZATION / KROVIMO LEIDIMAS", 10, 20);
+  doc.text("LOADING AUTHORIZATION / KROVIMO LEIDIMAS", 105, 20, {
+    align: "center",
+  });
 
+  // Subtitle
   doc.setFontSize(10);
+  doc.setTextColor(100, 100, 100);
+  doc.text("Fertrado-EBRESA Logistics System", 105, 27, { align: "center" });
+
   doc.setTextColor(0, 0, 0);
+  let y = 45;
+  const lineGap = 9;
 
-  let y = 35;
-  const lineGap = 8;
-
+  // Data Fields Mapping
   const fields = [
-    ["Date / Data:", data.date],
-    ["Time / Laikas:", data.time],
+    ["Reservation Date:", data.date],
+    ["Time Slot:", data.time],
     ["Company / Įmonė:", data.company],
-    ["Contract / Sutartis:", data.contractNum],
+    ["Contract # / Sutartis:", data.contractNum],
     ["Product / Produktas:", data.product],
     ["Package / Pakuotė:", data.package],
     ["Carrier / Vežėjas:", data.carrier],
-    ["Transport #:", data.transportNum],
-    ["Trailer #:", data.trailerNum],
+    ["Transport # / Numeris:", data.transportNum],
+    ["Trailer # / Priekaba:", data.trailerNum],
     ["CMR #:", data.cmrNum],
     ["Receiver / Gavėjas:", data.receiver],
     ["Driver / Vairuotojas:", data.driverName],
@@ -124,16 +140,19 @@ function generatePDF(data) {
   ];
 
   fields.forEach((field) => {
-    doc.setFont("", "bold");
+    doc.setFont(undefined, "bold");
     doc.text(field[0], 20, y);
-    doc.setFont("", "normal");
-    doc.text(String(field[1]), 70, y);
+    doc.setFont(undefined, "normal");
+    doc.text(String(field[1]), 80, y);
     y += lineGap;
   });
-  doc.text(
-    "------------------------------------------------------------",
-    20,
-    y + 5,
-  );
-  doc.save(`Ebresa_Pass_${data.transportNum}.pdf`);
+
+  // Footer
+  doc.setFontSize(9);
+  doc.setTextColor(150, 150, 150);
+  doc.text("Show this digital pass to security at the gate.", 105, y + 15, {
+    align: "center",
+  });
+
+  doc.save(`Ebresa_Booking_${data.transportNum}.pdf`);
 }
