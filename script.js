@@ -1,26 +1,24 @@
 const SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbxevLGU_zbzyJSa5d6F5J06MLieC94HD8tuCqolrxOIuGmbYBjfA45NEHK5jBfLo2rJ/exec";
+  "https://script.google.com/macros/s/AKfycbwUELGCUYN7kHd4esz25woFUT-UarRy-ro57v3qNTxr7zsAEYDXLU9Ry5RqOUQSMj94/exec";
 
+// --- 1. SEND DATA FUNCTION ---
 async function sendData(payload) {
   try {
     const response = await fetch(SCRIPT_URL, {
       method: "POST",
-      // Using text/plain is mandatory to avoid CORS pre-flight errors
       headers: {
         "Content-Type": "text/plain;charset=utf-8",
       },
       body: JSON.stringify(payload),
     });
-
-    // Google Apps Script returns a redirect, fetch follows it automatically
-    const result = await response.json();
-    return result;
+    return await response.json();
   } catch (error) {
     console.error("Connection Error:", error);
     return { result: "error", message: error.message };
   }
 }
-// --- 1. AVAILABILITY CHECK LOGIC ---
+
+// --- 2. CHECK AVAILABILITY ---
 document
   .getElementById("checkBtn")
   .addEventListener("click", async function () {
@@ -28,39 +26,22 @@ document
     const status = document.getElementById("availabilityStatus");
 
     if (!dateVal) {
-      status.innerText = "Please select a date first / Pasirinkite datą.";
-      status.style.color = "orange";
+      status.innerText = "Select a date first.";
       return;
     }
 
-    status.innerText = "Checking availability... / Tikrinama...";
-    status.style.color = "#3498db";
+    status.innerText = "Checking...";
+    const data = await sendData({ action: "check", date: dateVal });
 
-    try {
-      // We use text/plain to avoid CORS pre-flight blocks
-      const response = await fetch(SCRIPT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({ action: "check", date: dateVal }),
-      });
-
-      const data = await response.json();
-
-      if (data.remaining <= 0) {
-        status.innerText = "FULLY BOOKED (0 slots left) / UŽPILTYTA";
-        status.style.color = "#e74c3c";
-      } else {
-        status.innerText = `${data.remaining} slots remaining / likusios vietos.`;
-        status.style.color = "#27ae60";
-      }
-    } catch (error) {
-      console.error("Check error:", error);
-      status.innerText = "Error checking slots. Please try again.";
-      status.style.color = "red";
+    if (data.result === "info") {
+      status.innerText = `${data.remaining} slots remaining.`;
+      status.style.color = data.remaining > 0 ? "green" : "red";
+    } else {
+      status.innerText = "Error checking slots.";
     }
   });
 
-// --- 2. FORM SUBMISSION LOGIC ---
+// --- 3. FORM SUBMISSION ---
 document
   .getElementById("bookingForm")
   .addEventListener("submit", async function (e) {
@@ -69,9 +50,8 @@ document
     const msg = document.getElementById("message");
 
     btn.disabled = true;
-    btn.innerText = "Processing... / Apdorojama...";
+    btn.innerText = "Processing...";
 
-    // Collect all 13 fields
     const formData = {
       date: document.getElementById("date").value,
       time: document.getElementById("time").value,
@@ -88,90 +68,28 @@ document
       driverPhone: document.getElementById("driverPhone").value,
     };
 
-    try {
-      const response = await fetch(SCRIPT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(formData),
-      });
+    const data = await sendData(formData);
 
-      const data = await response.json();
-
-      if (data.result === "success") {
-        msg.style.color = "#27ae60";
-        msg.innerText =
-          "SUCCESS! Downloading receipt. / SĖKMINGA! Atsiunčiamas kvitas.";
-        generatePDF(formData);
-        document.getElementById("bookingForm").reset();
-        document.getElementById("availabilityStatus").innerText = "";
-      } else if (data.result === "full") {
-        msg.style.color = "#e74c3c";
-        msg.innerText = "Date is full (40/40). / Data užpildyta.";
-      } else {
-        throw new Error(data.error || "Unknown error");
-      }
-    } catch (error) {
-      console.error("Submit error:", error);
-      msg.style.color = "#e74c3c";
-      msg.innerText = "Connection error. Please check your internet.";
-    } finally {
-      btn.disabled = false;
-      btn.innerText = "Submit & Download Receipt";
+    if (data.result === "success") {
+      msg.innerText = "Success! Downloading receipt...";
+      msg.style.color = "green";
+      generatePDF(formData); // Use your existing PDF function
+      document.getElementById("bookingForm").reset();
+    } else {
+      msg.innerText = "Error: " + (data.error || "Slots full.");
+      msg.style.color = "red";
     }
+    btn.disabled = false;
+    btn.innerText = "Submit & Download Receipt";
   });
 
-// --- 3. PDF RECEIPT GENERATOR ---
+// --- 4. PDF GENERATOR ---
 function generatePDF(data) {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
-
-  // Title
-  doc.setFontSize(18);
-  doc.setTextColor(39, 174, 96);
-  doc.text("LOADING AUTHORIZATION / KROVIMO LEIDIMAS", 105, 20, {
-    align: "center",
-  });
-
-  // Subtitle
-  doc.setFontSize(10);
-  doc.setTextColor(100, 100, 100);
-  doc.text("Fertrado-EBRESA Logistics System", 105, 27, { align: "center" });
-
-  doc.setTextColor(0, 0, 0);
-  let y = 45;
-  const lineGap = 9;
-
-  // Data Fields Mapping
-  const fields = [
-    ["Reservation Date:", data.date],
-    ["Time Slot:", data.time],
-    ["Company / Įmonė:", data.company],
-    ["Contract # / Sutartis:", data.contractNum],
-    ["Product / Produktas:", data.product],
-    ["Package / Pakuotė:", data.package],
-    ["Carrier / Vežėjas:", data.carrier],
-    ["Transport # / Numeris:", data.transportNum],
-    ["Trailer # / Priekaba:", data.trailerNum],
-    ["CMR #:", data.cmrNum],
-    ["Receiver / Gavėjas:", data.receiver],
-    ["Driver / Vairuotojas:", data.driverName],
-    ["Phone / Telefonas:", data.driverPhone],
-  ];
-
-  fields.forEach((field) => {
-    doc.setFont(undefined, "bold");
-    doc.text(field[0], 20, y);
-    doc.setFont(undefined, "normal");
-    doc.text(String(field[1]), 80, y);
-    y += lineGap;
-  });
-
-  // Footer
-  doc.setFontSize(9);
-  doc.setTextColor(150, 150, 150);
-  doc.text("Show this digital pass to security at the gate.", 105, y + 15, {
-    align: "center",
-  });
-
-  doc.save(`Ebresa_Booking_${data.transportNum}.pdf`);
+  doc.text("LOADING AUTHORIZATION", 10, 20);
+  doc.text(`Date: ${data.date}`, 10, 30);
+  doc.text(`Company: ${data.company}`, 10, 40);
+  doc.text(`Order: ${data.transportNum}`, 10, 50);
+  doc.save(`Receipt_${data.transportNum}.pdf`);
 }
