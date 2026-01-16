@@ -62,6 +62,9 @@ document.getElementById("bookingForm").addEventListener("submit", function (e) {
 
   fetch(SCRIPT_URL, {
     method: "POST",
+    mode: "no-cors", // This is a common fix for Google Apps Script errors
+    cache: "no-cache",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(formData),
   })
     .then((res) => res.json())
