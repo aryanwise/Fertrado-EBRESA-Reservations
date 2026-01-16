@@ -1,20 +1,24 @@
 const SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbz45e9poUxSCUoA2a_07UaoGkViPrGvbar9HTQxMctr5qxwg91Npxt0CNdRjanV4mvk/exec";
+  "https://script.google.com/macros/s/AKfycbzSvRQeLnH69MssLEpTPbK-CAa-IzmGNv6K-Mp7NNIcl5SxvsirEHWmFUhiNlGMKtEM/exec";
 
 async function sendData(payload) {
   try {
     const response = await fetch(SCRIPT_URL, {
       method: "POST",
-      body: JSON.stringify(payload),
+      // This header is the secret to bypassing CORS errors with Google Apps Script
       headers: {
         "Content-Type": "text/plain;charset=utf-8",
       },
+      body: JSON.stringify(payload),
+      // Forces the browser to handle redirects which Google uses
+      redirect: "follow",
     });
+
     const result = await response.json();
     return result;
   } catch (error) {
-    console.error("Detailed Error:", error);
-    return { result: "error", message: error.message };
+    console.error("Fetch Error:", error);
+    return { result: "error", message: "Network error or CORS block." };
   }
 }
 // 1. Availability Check
