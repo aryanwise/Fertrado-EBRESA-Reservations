@@ -1,5 +1,5 @@
 const SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbzbXTzTo3aMpO8bDrRoGaX72_wlThVmiAL-S-lkAJRL_5sutC6DkERu63rs3SfZVB0P/exec";
+  "https://script.google.com/macros/s/AKfycbzNi6lH7ERITUvy-N1DOUvEz3wiTH_W5lApGm1K9dDpS-cUU_ztfwUTV9BgVRRYDNQ/exec";
 
 // --- 1. AVAILABILITY CHECK LOGIC ---
 document
