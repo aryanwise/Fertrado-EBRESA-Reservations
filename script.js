@@ -1,39 +1,38 @@
 const SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbxVaUa22rlhlC6fJcb-X4jky9WllbffULEL-NMfOmb27A6kTm9yTvOV4BN4O_A9Msc_/exec";
+  "https://script.google.com/macros/s/AKfycbz45e9poUxSCUoA2a_07UaoGkViPrGvbar9HTQxMctr5qxwg91Npxt0CNdRjanV4mvk/exec";
 
-// 1. Availability Check
-document.getElementById("checkBtn").addEventListener("click", function () {
-  const dateVal = document.getElementById("date").value;
-  const status = document.getElementById("availabilityStatus");
-
-  if (!dateVal) {
-    status.innerText = "Please select a date first.";
-    status.style.color = "orange";
-    return;
-  }
-
-  status.innerText = "Checking...";
-  status.style.color = "#3498db";
-
-  fetch(SCRIPT_URL, {
-    method: "POST",
-    body: JSON.stringify({ action: "check", date: dateVal }),
-  })
-    .then((res) => res.json())
-    .then((data) => {
-      if (data.remaining <= 0) {
-        status.innerText = "FULLY BOOKED (0 slots left)";
-        status.style.color = "#e74c3c";
-      } else {
-        status.innerText = `${data.remaining} slots remaining for this day.`;
-        status.style.color = "#27ae60";
-      }
-    })
-    .catch(() => {
-      status.innerText = "Connection error.";
-      status.style.color = "red";
+async function sendData(payload) {
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: "POST",
+      body: JSON.stringify(payload),
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8",
+      },
     });
-});
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error("Detailed Error:", error);
+    return { result: "error", message: error.message };
+  }
+}
+// 1. Availability Check
+document
+  .getElementById("checkBtn")
+  .addEventListener("click", async function () {
+    const dateVal = document.getElementById("date").value;
+    if (!dateVal) return alert("Select date");
+
+    const data = await sendData({ action: "check", date: dateVal });
+    const status = document.getElementById("availabilityStatus");
+
+    if (data.result === "info") {
+      status.innerText = data.remaining + " slots left.";
+    } else {
+      alert("Error: " + JSON.stringify(data));
+    }
+  });
 
 // 2. Form Submission
 document.getElementById("bookingForm").addEventListener("submit", function (e) {
