@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fertilizer Booking Manager</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+
+<body>
+
+    <div class="container">
+        <h2>EBRESA Reservations</h2>
+        <p class="subtitle">Daily Limit: 40 Trucks / 40 Sunkvežimių per dieną</p>
+
+        <form id="bookingForm">
+            <label>Reservation Date / Atvykimo diena / Data rezerwacji *</label>
+            <input type="date" id="date" required>
+            <button type="button" id="checkBtn" class="secondary-btn">Check Availability</button>
+            <p id="availabilityStatus"></p>
+
+            <label>Time Slot / Laiko tarpas / Przedział czasowy *</label>
+            <select id="time" required>
+                <option value="08:00-12:00">08:00 - 12:00</option>
+                <option value="13:00-15:00">13:00 - 15:00</option>
+            </select>
+
+            <label>Company / Įmonė / Firma *</label>
+            <input type="text" id="company" required>
+
+            <label>Contract number / Sutarties numeris / Numer umowy *</label>
+            <input type="text" id="contractNum" required>
+
+            <label>Product / Produktas / Produkt *</label>
+            <input type="text" id="product" required>
+
+            <label>Package / Pakuotė / Opakowanie *</label>
+            <input type="text" id="package" required>
+
+            <label>Carrier / Vežėjas / Przewoźnik *</label>
+            <input type="text" id="carrier" required>
+
+            <label>Transport number / Transporto numeris / Numer transportu *</label>
+            <input type="text" id="transportNum" required>
+
+            <label>Trailer number / Priekabos numeris / Numer naczepy *</label>
+            <input type="text" id="trailerNum" required>
+
+            <label>CMR number / CMR numeris / Numer CMR *</label>
+            <input type="text" id="cmrNum" required>
+
+            <label>Receiver / Gavėjas / Odbiorca *</label>
+            <input type="text" id="receiver" required placeholder="Company, Country, Location">
+
+            <label>Driver Full Name / Vairuotojo vardas, pavardė *</label>
+            <input type="text" id="driverName" required>
+
+            <label>Driver Phone / Vairuotojo telefonas *</label>
+            <input type="tel" id="driverPhone" required>
+
+            <button type="submit" id="submitBtn">Submit & Download Receipt</button>
+        </form>
+        <div id="message"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
