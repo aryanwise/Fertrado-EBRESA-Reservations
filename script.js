@@ -1,23 +1,22 @@
 const SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbzNi6lH7ERITUvy-N1DOUvEz3wiTH_W5lApGm1K9dDpS-cUU_ztfwUTV9BgVRRYDNQ/exechttps://script.google.com/macros/s/AKfycbxevLGU_zbzyJSa5d6F5J06MLieC94HD8tuCqolrxOIuGmbYBjfA45NEHK5jBfLo2rJ/exec";
+  "https://script.google.com/macros/s/AKfycbxevLGU_zbzyJSa5d6F5J06MLieC94HD8tuCqolrxOIuGmbYBjfA45NEHK5jBfLo2rJ/exec";
 
 async function sendData(payload) {
   try {
     const response = await fetch(SCRIPT_URL, {
       method: "POST",
-      // We use text/plain to avoid the "CORS Preflight" which causes 404/Null errors
+      // Using text/plain is mandatory to avoid CORS pre-flight errors
       headers: {
         "Content-Type": "text/plain;charset=utf-8",
       },
       body: JSON.stringify(payload),
     });
 
-    if (!response.ok) throw new Error("Network response was not ok");
-
+    // Google Apps Script returns a redirect, fetch follows it automatically
     const result = await response.json();
     return result;
   } catch (error) {
-    console.error("Fetch Logic Error:", error);
+    console.error("Connection Error:", error);
     return { result: "error", message: error.message };
   }
 }
